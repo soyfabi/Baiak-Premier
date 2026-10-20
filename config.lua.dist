@@ -304,7 +304,7 @@ RANGE_ROTATE_ITEM_INTERVAL = 250
 
 -- Map
 -- NOTE: set mapName WITHOUT .otbm at the end
-mapName = "world"
+mapName = "PremierBaiak"
 mapCacheMode = "auto" -- "auto" or "off"
 mapCacheDirectory = "data/cache/maps"
 mapAuthor = "Skyyzyy"
