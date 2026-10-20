@@ -49,6 +49,47 @@ uint16_t getMonsterRaceId(const Monster* monster)
 	return monsterType ? static_cast<uint16_t>(monsterType->raceId) : 0;
 }
 
+uint8_t getEquipmentDodgeApplied(const Item* item)
+{
+	if (!item) {
+		return 0;
+	}
+
+	const ItemAttributes::CustomAttribute* attribute = item->getCustomAttribute("equipmentDodgeApplied");
+	if (!attribute) {
+		return 0;
+	}
+
+	if (const auto* applied = std::get_if<int64_t>(&attribute->value)) {
+		return static_cast<uint8_t>(std::clamp<int64_t>(*applied, 0, 4));
+	}
+	if (const auto* applied = std::get_if<double>(&attribute->value)) {
+		return static_cast<uint8_t>(std::clamp(*applied, 0.0, 4.0));
+	}
+	return 0;
+}
+
+uint8_t getEquipmentCriticalApplied(const Player* player)
+{
+	if (!player) {
+		return 0;
+	}
+
+	const Item* helmet = player->getInventoryItem(CONST_SLOT_HEAD);
+	const ItemAttributes::CustomAttribute* attribute = helmet ? helmet->getCustomAttribute("equipmentCriticalApplied") : nullptr;
+	if (!attribute) {
+		return 0;
+	}
+
+	if (const auto* applied = std::get_if<int64_t>(&attribute->value)) {
+		return static_cast<uint8_t>(std::clamp<int64_t>(*applied, 0, 20));
+	}
+	if (const auto* applied = std::get_if<double>(&attribute->value)) {
+		return static_cast<uint8_t>(std::clamp(*applied, 0.0, 20.0));
+	}
+	return 0;
+}
+
 int32_t getCharmBonusBasisPoints(const Player& player, uint16_t raceId, uint8_t charmId)
 {
 	if (!BestiaryCharmSystem::isEnabled()) {
@@ -1244,6 +1285,11 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				}
 				dodgeChance += armorDodgeChance;
 			}
+
+			Item* legs = targetPlayer->getInventoryItem(CONST_SLOT_LEGS);
+			const uint8_t equipmentDodgeApplied = getEquipmentDodgeApplied(armor) + getEquipmentDodgeApplied(legs);
+			// Each application adds 5% actual dodge chance (1 in 20 hits).
+			dodgeChance += equipmentDodgeApplied * 5.0;
 			if (dodgeChance > 0 && (normal_random(1, 10000) / 100.0) < dodgeChance) {
 				damage.primary.value = 0;
 				damage.secondary.value = 0;
@@ -1279,26 +1325,29 @@ void Combat::doTargetCombat(Creature* caster, Creature* target, CombatDamage& da
 				}
 
 				const uint16_t targetRaceId = target ? getMonsterRaceId(target->getMonster()) : 0;
+				const uint8_t equipmentCriticalApplied = target && target->getMonster() ? getEquipmentCriticalApplied(casterPlayer) : 0;
 				const int32_t lowBlowBonus = targetRaceId != 0 ? getCharmBonusBasisPoints(*casterPlayer, targetRaceId, CHARM_LOW_BLOW) : 0;
 				const int32_t savageBonus = targetRaceId != 0 ? getCharmBonusBasisPoints(*casterPlayer, targetRaceId, CHARM_SAVAGE) : 0;
 				const int32_t baseChance = std::clamp<int32_t>(
 				    static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITCHANCE)) +
 				        damage.criticalChance,
 				    0, 10000);
-				const int32_t chance = std::clamp<int32_t>(baseChance + lowBlowBonus, 0, 10000);
+				const int32_t equipmentChance = equipmentCriticalApplied * 100;
+				const int32_t chance = std::clamp<int32_t>(baseChance + equipmentChance + lowBlowBonus, 0, 10000);
 				int32_t skill = std::max<int32_t>(
 				    0, static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT)) +
 				           damage.criticalDamage + savageBonus +
-				           casterPlayer->getWheelBallisticMasteryCriticalBonus(damage.origin));
+				           casterPlayer->getWheelBallisticMasteryCriticalBonus(damage.origin) +
+				           (equipmentCriticalApplied > 0 ? 5000 : 0));
 				const int32_t roll = uniform_random(1, 10000);
-				if (skill == 0 && lowBlowBonus > 0 && roll > baseChance) {
+				if (skill == 0 && lowBlowBonus > 0 && roll > baseChance + equipmentChance) {
 					skill = 5000;
 				}
 				if (chance > 0 && skill > 0 && roll <= chance) {
 					damage.primary.value += std::round(damage.primary.value * (skill / 10000.));
 					damage.secondary.value += std::round(damage.secondary.value * (skill / 10000.));
 					damage.critical = true;
-					if (lowBlowBonus > 0 && roll > baseChance) {
+					if (lowBlowBonus > 0 && roll > baseChance + equipmentChance) {
 						casterPlayer->sendCharmActivated(CHARM_LOW_BLOW);
 					}
 					if (savageBonus > 0) {
@@ -1685,6 +1734,7 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 		}
 
 		uint16_t targetRaceId = 0;
+		const bool targetIsMonster = creature->getMonster() != nullptr;
 		if (casterPlayer) {
 			if (const auto targetMonster = std::dynamic_pointer_cast<Monster>(creature)) {
 				targetRaceId = getMonsterRaceId(targetMonster.get());
@@ -1693,21 +1743,33 @@ void Combat::doAreaCombat(Creature* caster, const Position& position, const Area
 
 		int32_t targetCriticalPrimary = criticalPrimary;
 		int32_t targetCriticalSecondary = criticalSecondary;
-		if (casterPlayer && targetRaceId != 0 && !damageCopy.critical &&
+		const bool alreadyCritical = damageCopy.critical;
+		const uint8_t equipmentCriticalApplied = targetIsMonster ? getEquipmentCriticalApplied(casterPlayer) : 0;
+		const int32_t equipmentCriticalChance = equipmentCriticalApplied * 100;
+		const int32_t equipmentCriticalDamage = equipmentCriticalApplied > 0 ? 5000 : 0;
+		if (casterPlayer && targetIsMonster && !damageCopy.critical &&
 		    damageCopy.primary.type != COMBAT_HEALING && damage.origin != ORIGIN_CONDITION) {
 			const int32_t lowBlowBonus = getCharmBonusBasisPoints(*casterPlayer, targetRaceId, CHARM_LOW_BLOW);
 			int32_t skill = std::max<int32_t>(
 			    0, static_cast<int32_t>(casterPlayer->getSpecialSkill(SPECIALSKILL_CRITICALHITAMOUNT)) +
-			           damage.criticalDamage);
+			           damage.criticalDamage + equipmentCriticalDamage);
 			if (skill == 0 && lowBlowBonus > 0) {
 				skill = 5000;
 			}
-			if (lowBlowBonus > 0 && skill > 0 && uniform_random(1, 10000) <= lowBlowBonus) {
+			const int32_t chance = std::clamp<int32_t>(lowBlowBonus + equipmentCriticalChance, 0, 10000);
+			const int32_t roll = uniform_random(1, 10000);
+			if (chance > 0 && skill > 0 && roll <= chance) {
 				targetCriticalPrimary = std::round(damageCopy.primary.value * (skill / 10000.));
 				targetCriticalSecondary = std::round(damageCopy.secondary.value * (skill / 10000.));
 				damageCopy.critical = true;
-				casterPlayer->sendCharmActivated(CHARM_LOW_BLOW);
+				if (lowBlowBonus > 0 && roll > equipmentCriticalChance) {
+					casterPlayer->sendCharmActivated(CHARM_LOW_BLOW);
+				}
 			}
+		}
+		if (casterPlayer && targetIsMonster && alreadyCritical && equipmentCriticalDamage > 0) {
+			targetCriticalPrimary += std::round(damageCopy.primary.value * (equipmentCriticalDamage / 10000.));
+			targetCriticalSecondary += std::round(damageCopy.secondary.value * (equipmentCriticalDamage / 10000.));
 		}
 
 		if (casterPlayer && targetRaceId != 0 && damageCopy.critical) {

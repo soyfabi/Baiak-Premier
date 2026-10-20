@@ -23388,8 +23388,8 @@
 		<attribute key="weight" value="900" />
 		<attribute key="primarytype" value="quest items" />
 	</item>
-	<item id="8828" article="a" name="weapon matrix crystal">
-		<attribute key="description" value="It contains patterns to create weapons" />
+	<item id="8828" article="a" name="dodge matrix crystal">
+		<attribute key="description" value="Use it on armor or legs to apply Dodge. Each equipment can receive up to 4 applications." />
 		<attribute key="weight" value="250" />
 		<attribute key="primarytype" value="valuables" />
 		<attribute key="loottype" value="valuable" />
@@ -47169,7 +47169,9 @@
 		<attribute key="primarytype" value="decoration" />
 	</item>
 	<item fromid="23726" toid="23728" article="a" name="vortex" />
-	<item id="23729" article="a" name="lost time">
+	<item id="23729" article="a" name="reflect atoms">
+		<attribute key="description" value="Use it on boots to apply Reflect. Each pair of boots can receive up to 55 applications." />
+		<attribute key="weight" value="1800" />
 		<attribute key="primarytype" value="machines" />
 	</item>
 	<item id="23730" article="an" name="old desk">
@@ -54301,8 +54303,8 @@
 		<attribute key="weight" value="180" />
 		<attribute key="primarytype" value="quest items" />
 	</item>
-	<item id="28709" article="a" name="ruby fire stone">
-		<attribute key="description" value="It looks quite fragile" />
+	<item id="28709" article="a" name="critical fire stone">
+		<attribute key="description" value="Use it on a helmet to apply Critical. Each helmet can receive up to 20 applications." />
 		<attribute key="weight" value="180" />
 		<attribute key="primarytype" value="quest items" />
 	</item>
@@ -70460,7 +70462,7 @@
 		<attribute key="loottype" value="food" />
 	</item>
 	<item id="37532" article="an" name="ice cream cone">
-		<attribute key="description" value="It is covered in colourful sprinkles" />
+		<attribute key="description" value="It is covered in colourful sprinkles. This magical treat never runs out." />
 		<attribute key="weight" value="70" />
 	</item>
 	<item id="37533" article="a" name="birthday layer cake">
@@ -81462,6 +81464,12 @@
 		<attribute key="primarytype" value="liquids" />
 		<attribute key="loottype" value="potion" />
 	</item>
+	<item id="49272" article="a" name="Crimson Essence Jar">
+		<attribute key="description" value="Use to activate a 10-minute healing effect. Monster kills increase its healing; the bonus fades after 2 minutes without a kill." />
+		<attribute key="weight" value="2500" />
+		<attribute key="charges" value="3" />
+		<attribute key="showCharges" value="1" />
+	</item>
 	<item toid="49282" fromid="49329" article="a" name="brick wall" />
 	<item id="49371" article="a" name="lesser spiritualist gem" plural="lesser spiritualist gems">
 		<attribute key="description" value="Shines with the strength of monks." />
@@ -87252,6 +87260,11 @@
 	<item id="52747" article="a" name="broken staff of mind control">
 		<attribute key="description" value="A broken staff with a skull on one end. One of the means of which an evil warlock controlled the minds of others."/>
 		<attribute key="weight" value="1001"/>
+	</item>
+	<item id="53633" article="a" name="Beaver Doll Fluky">
+		<attribute key="description" value="Grants all remaining addons for one chosen outfit." />
+		<attribute key="weight" value="1200" />
+		<attribute key="primarytype" value="dolls and bears" />
 	</item>
 	<!-- Echo Raid / Echo Warden (aligned client IDs, no server/client conversion). -->
 	<item id="53751" article="a" name="basic bash scroll">

@@ -77,6 +77,61 @@ event.onLook = function(self, thing, position, distance, description)
 
 	if thing:isItem() then
 		description = description .. thing:getDescription(distance, nil, nil, self)
+		local itemType = thing:getType()
+		if itemType:isHelmet() then
+			local criticalApplied = tonumber(thing:getCustomAttribute("equipmentCriticalApplied")) or 0
+			criticalApplied = math.max(0, math.min(20, criticalApplied))
+			description = string.format("%s\nCritical Applied: %d/20", description, criticalApplied)
+		end
+		if itemType:isBoots() then
+			local reflectApplied = tonumber(thing:getCustomAttribute("equipmentReflectApplied")) or 0
+			reflectApplied = math.max(0, math.min(55, reflectApplied))
+			description = string.format("%s\nReflect Applied: %d/55", description, reflectApplied)
+		end
+		if thing:getId() == 49272 then
+			local now = os.time()
+			local expiresAt = math.max(0, tonumber(self:getStorageValue(987650)) or 0)
+			local charges = tonumber(thing:getCharges()) or 0
+			if charges <= 0 then
+				charges = 3
+			end
+			local lines = { string.format("Charges: %d/3", charges) }
+			if expiresAt > now then
+				local souls = math.max(0, tonumber(self:getStorageValue(987651)) or 0)
+				local lastKill = math.max(0, tonumber(self:getStorageValue(987652)) or 0)
+				if souls > 0 and (lastKill == 0 or now - lastKill >= 120) then
+					souls = 0
+				end
+				local timeRemaining = expiresAt - now
+				table.insert(lines, "Crimson Essence: active")
+				table.insert(lines, string.format("Healing: %d HP every 3 seconds", 30 + souls))
+				table.insert(lines, string.format("Souls collected: %d", souls))
+				table.insert(lines, string.format("Time remaining: %02d:%02d", math.floor(timeRemaining / 60), timeRemaining % 60))
+				if souls > 0 then
+					local resetIn = math.max(0, 120 - (now - lastKill))
+					table.insert(lines, string.format("Healing resets to 30 in: %02d:%02d without a monster kill", math.floor(resetIn / 60), resetIn % 60))
+				else
+					table.insert(lines, "Kill monsters to increase the healing.")
+				end
+			else
+				table.insert(lines, "Crimson Essence: inactive")
+			end
+			self:popupFYI(table.concat(lines, "\n"))
+		end
+		if itemType:isArmor() or itemType:isLegs() then
+			local dodgeApplied = tonumber(thing:getCustomAttribute("equipmentDodgeApplied")) or 0
+			dodgeApplied = math.max(0, math.min(4, dodgeApplied))
+			description = string.format("%s\nDodge Applied: %d/4 (%d%%)", description, dodgeApplied, dodgeApplied * 25)
+
+			local armor = self:getSlotItem(CONST_SLOT_ARMOR)
+			local legs = self:getSlotItem(CONST_SLOT_LEGS)
+			if armor and legs then
+				local armorDodge = math.max(0, math.min(4, tonumber(armor:getCustomAttribute("equipmentDodgeApplied")) or 0))
+				local legsDodge = math.max(0, math.min(4, tonumber(legs:getCustomAttribute("equipmentDodgeApplied")) or 0))
+				local totalApplied = armorDodge + legsDodge
+				description = string.format("%s\nTotal Dodge Applied: %d/8 (%d%%)", description, totalApplied, math.floor(totalApplied * 100 / 8))
+			end
+		end
 		
 	else
 		description = description .. thing:getDescription(distance)

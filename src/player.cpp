@@ -4235,6 +4235,31 @@ BlockType_t Player::blockHit(const std::shared_ptr<Creature>& attacker, CombatTy
 		}
 	}
 
+	const Item* feet = getInventoryItem(CONST_SLOT_FEET);
+	const ItemAttributes::CustomAttribute* reflectAppliedAttribute =
+	    feet ? feet->getCustomAttribute("equipmentReflectApplied") : nullptr;
+	uint8_t reflectApplied = 0;
+	if (reflectAppliedAttribute) {
+		if (const auto* applied = std::get_if<int64_t>(&reflectAppliedAttribute->value)) {
+			reflectApplied = static_cast<uint8_t>(std::clamp<int64_t>(*applied, 0, 55));
+		} else if (const auto* applied = std::get_if<double>(&reflectAppliedAttribute->value)) {
+			reflectApplied = static_cast<uint8_t>(std::clamp(*applied, 0.0, 55.0));
+		}
+	}
+	if (damage > 0 && attacker && attacker->getMonster() && reflectApplied > 0 && origin != ORIGIN_CONDITION &&
+	    origin != ORIGIN_REFLECT && uniform_random(1, 100) <= reflectApplied) {
+		const int32_t reflectedDamage = std::round(damage * 0.25);
+		if (reflectedDamage > 0) {
+			CombatDamage reflectDamage;
+			reflectDamage.primary.type = combatType;
+			reflectDamage.primary.value = -reflectedDamage;
+			reflectDamage.origin = ORIGIN_REFLECT;
+			g_game.combatChangeHealth(this, attacker.get(), reflectDamage);
+			sendMagicEffect(getPosition(), 318);
+			g_game.addMagicEffect(attacker->getPosition(), 349, attacker->getInstanceID());
+		}
+	}
+
 	if (damage <= 0) {
 		damage = 0;
 		blockType = BLOCK_ARMOR;
