@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/tfs-1.8-official-banner.png" alt="TFS 1.8 Downgrade — Protocol 8.60" width="100%" />
+  <img src="docs/assets/tfs1-8-official-banner.jfif" alt="TFS 1.8 Downgrade — Protocol 8.60" width="100%" />
 </p>
 
 <div align="center">
